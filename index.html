@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="FDP (Fodinha): jogo de cartas brasileiro contra bots. Português, español, English.">
+<title>FDP Fodinha</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sansita:wght@700;800&family=Figtree:wght@400;600;800&display=swap">
+<style>
+/* Layout: a single card table — bots across the top rail, the trick in the felt, your hand at the bottom edge. Deliberately one dark look. */
+:root{
+  --felt:#1c3d37; --felt-deep:#132b27; --rail:#3b2619; --card:#f7f1e3; --ink:#1d1a16;
+  --red:#b8322a; --gold:#e3b14b; --text:#edf2ea; --muted:#9db7ae; --line:rgba(237,242,234,.14);
+  --f-display:"Sansita", Georgia, serif; --f-body:"Figtree", system-ui, sans-serif;
+  --cw:56px; color-scheme:dark;
+}
+html,body{height:100%}
+body{background:radial-gradient(120% 90% at 50% 40%,var(--felt) 0%,var(--felt-deep) 100%) fixed,var(--felt-deep);color:var(--text);font-family:var(--f-body);font-size:15px;margin:0}
+.wrap{max-width:1140px;margin:0 auto;padding-inline:16px;padding-block:14px 28px;display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--f-display);font-weight:800;font-size:2rem;margin:0;letter-spacing:.02em;line-height:1}
+h1 small{font-family:var(--f-body);font-weight:600;font-size:.8rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-left:8px}
+.btn{font:inherit;font-weight:700;border:1px solid var(--line);background:rgba(0,0,0,.25);color:var(--text);border-radius:999px;padding:8px 14px;cursor:pointer}
+.btn:hover{border-color:var(--gold)}
+.btn.primary{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.hdr-btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.seg.lang .btn{padding:6px 10px;font-size:.8rem;letter-spacing:.04em}
+.seg .btn[aria-pressed="true"]{background:var(--gold);color:var(--ink)}
+
+.seats{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px}
+.seat{background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;min-width:0;transition:border-color .2s,box-shadow .2s}
+.seat.turn{border-color:var(--gold);box-shadow:0 0 0 2px rgba(227,177,75,.25)}
+.seat.out{opacity:.4}
+.seat-top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.name{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip{font-size:.68rem;font-weight:800;background:var(--gold);color:var(--ink);border-radius:999px;padding:1px 6px;letter-spacing:.04em}
+.lives{letter-spacing:2px;color:var(--red);font-size:.8rem}
+.lives .gone{color:rgba(237,242,234,.2)}
+.betline{font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.betline b{color:var(--text)}
+.backs{display:flex;align-items:center;gap:6px;min-height:34px}
+.backs .mini{width:22px;height:32px;border-radius:4px;background:repeating-linear-gradient(45deg,#7a2a22 0 4px,#9a382e 4px 8px);border:2px solid var(--card)}
+.backs span{font-size:.8rem;color:var(--muted)}
+
+.table{background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.info{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.vira{display:flex;align-items:center;gap:10px}
+.lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700}
+.manilha{font-family:var(--f-display);font-size:1.25rem;color:var(--gold)}
+.roundinfo{text-align:right;font-variant-numeric:tabular-nums}
+.roundinfo div:first-child{font-weight:800}
+.trick{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;min-height:calc(var(--cw)*1.4 + 22px);align-items:flex-end}
+.played{display:flex;flex-direction:column;align-items:center;gap:4px;animation:drop .25s ease-out}
+.played .who{font-size:.72rem;color:var(--muted);font-weight:600}
+.status{text-align:center;font-weight:600;min-height:1.4em}
+.status.you{color:var(--gold)}
+
+.card{width:var(--cw);height:calc(var(--cw)*1.4);background:var(--card);color:var(--ink);border-radius:7px;position:relative;box-shadow:0 2px 6px rgba(0,0,0,.35);flex:none;font-family:var(--f-body);border:0;padding:0}
+.card.red{color:var(--red)}
+.card .r{position:absolute;top:4px;left:6px;font-weight:800;font-size:calc(var(--cw)*.3);line-height:1}
+.card .s{position:absolute;inset:0;display:grid;place-items:center;font-size:calc(var(--cw)*.5);padding-top:10px}
+.card.man{box-shadow:0 0 0 3px var(--gold),0 2px 6px rgba(0,0,0,.35)}
+.card.win{transform:translateY(-6px);box-shadow:0 0 0 3px var(--gold),0 0 18px rgba(227,177,75,.6)}
+.card.dead{opacity:.45}
+.card.back{background:repeating-linear-gradient(45deg,#7a2a22 0 6px,#9a382e 6px 12px);border:3px solid var(--card);color:var(--card)}
+.card.back .s{font-family:var(--f-display);font-size:calc(var(--cw)*.55);padding:0}
+.card.sm{--cw:40px}
+
+.me{background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.me.turn{border-color:var(--gold)}
+.hand{display:flex;justify-content:center;padding-top:8px;min-height:calc(var(--cw)*1.4 + 10px)}
+.hand .card + .card{margin-left:calc(var(--cw)*-.22)}
+.hand button.card{cursor:pointer;transition:transform .15s}
+.hand button.card:not(:disabled):hover{transform:translateY(-8px)}
+.hand button.card:disabled{cursor:default}
+.hand.live button.card:not(:disabled){box-shadow:0 0 0 2px var(--gold),0 2px 6px rgba(0,0,0,.35)}
+.betbox{display:flex;flex-direction:column;align-items:center;gap:8px}
+.bets{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.bets .btn{min-width:44px;font-variant-numeric:tabular-nums}
+.note{font-size:.8rem;color:var(--muted);text-align:center}
+
+.overlay{position:fixed;inset:0;background:rgba(5,14,12,.72);display:grid;place-items:center;padding:16px;z-index:10}
+.panel{background:var(--felt-deep);border:1px solid var(--gold);border-radius:16px;padding:18px;width:min(420px,100%);display:flex;flex-direction:column;gap:12px;max-height:90vh;overflow:auto}
+.panel h2{font-family:var(--f-display);margin:0;font-size:1.5rem;text-wrap:balance}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:6px 4px;text-align:center;border-bottom:1px solid var(--line)}
+th{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+td:first-child,th:first-child{text-align:left}
+.loss{color:#ff8a7a;font-weight:800}
+.ok{color:#9fe0a8;font-weight:800}
+.opts{display:flex;flex-direction:column;gap:10px}
+.opt{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.seg{display:flex;gap:4px}
+.seg .btn{padding:6px 12px}
+.seg .btn[aria-pressed="true"]{background:var(--gold);color:var(--ink)}
+details{background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+summary{cursor:pointer;font-weight:800}
+details ul{margin:8px 0 0;padding-left:18px;line-height:1.55;color:var(--muted);max-width:65ch}
+details b{color:var(--text)}
+.layout{display:grid;gap:14px}
+.game{display:flex;flex-direction:column;gap:14px;min-width:0}
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+@media (min-width:920px){.layout{grid-template-columns:minmax(0,1fr) 340px;align-items:start}.side{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);max-height:calc(100vh - 24px);overflow:auto}}
+.box{background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.box h3{font-family:var(--f-display);font-size:1.15rem;margin:0;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.box h3 .lbl{font-family:var(--f-body)}
+.sheet-wrap{overflow-x:auto}
+.sheet{font-size:.85rem}
+.sheet th,.sheet td{padding:5px 3px;vertical-align:top}
+.sheet th{white-space:nowrap}
+.sheet td.c{white-space:nowrap;line-height:1.15}
+.sheet .bw{font-weight:800}
+.sheet .sub{display:block;font-size:.72rem;color:var(--muted)}
+.sheet .sub .loss,.sheet .sub .ok{font-weight:800}
+.sheet tr.cur td{background:rgba(227,177,75,.07)}
+.sheet tr.cur .bw{color:var(--gold)}
+.sheet tr.sel td{background:rgba(227,177,75,.16)}
+.sheet tfoot td{font-weight:800;border-top:2px solid var(--line);border-bottom:0}
+.rdbtn{font:inherit;font-weight:800;background:none;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:1px 7px;cursor:pointer;font-variant-numeric:tabular-nums}
+.rdbtn:hover{border-color:var(--gold)}
+.legend{font-size:.75rem;color:var(--muted)}
+.tlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.tlist li{display:grid;grid-template-columns:20px minmax(0,1fr);gap:6px;align-items:start;padding-bottom:6px;border-bottom:1px solid var(--line);font-size:.82rem}
+.tlist li:last-child{border-bottom:0;padding-bottom:0}
+.tn{font-weight:800;color:var(--muted);font-variant-numeric:tabular-nums}
+.plays{display:flex;flex-wrap:wrap;gap:4px 10px}
+.play{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.play.win .pn{color:var(--gold);font-weight:800}
+.tres{grid-column:2;font-weight:700}
+.cc{display:inline-block;background:var(--card);color:var(--ink);border-radius:4px;padding:0 4px;font-weight:800;font-size:.8rem;line-height:1.45}
+.cc.red{color:var(--red)}
+.cc.man{box-shadow:0 0 0 2px var(--gold)}
+.cc.dead{text-decoration:line-through;opacity:.55}
+.empty{color:var(--muted);font-size:.85rem}
+.check{font-size:.8rem;color:var(--muted)}
+@keyframes drop{from{transform:translateY(-10px);opacity:.3}to{transform:none;opacity:1}}
+@media (min-width:600px){:root{--cw:66px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>FDP<small>Fodinha</small></h1>
+    <div class="hdr-btns">
+      <div class="seg lang" role="group" id="langs" aria-label="Idioma">
+        <button class="btn" data-lang="pt" lang="pt">PT</button>
+        <button class="btn" data-lang="es" lang="es">ES</button>
+        <button class="btn" data-lang="en" lang="en">EN</button>
+      </div>
+      <button class="btn" id="btn-new"></button>
+    </div>
+  </header>
+  <div class="layout">
+  <main class="game">
+  <section class="seats" id="seats"></section>
+  <section class="table" id="table"></section>
+  <section class="me" id="me"></section>
+  <details>
+    <summary id="howto-title"></summary>
+    <ul id="howto"></ul>
+  </details>
+  </main>
+  <aside class="side" id="side"></aside>
+  </div>
+</div>
+<div id="overlay"></div>
+
+<script>
+const RANKS=['4','5','6','7','Q','J','K','A','2','3'];
+const SUITS=['♦','♠','♥','♣'];            // manilha strength, low → high
+const RED=[true,false,true,false];
+const BOT_NAMES=['Zé','Dona Cida','Tonhão','Neide','Biel'];
+const DELAY=700;
+let G=null, cfg={bots:3,lives:5}, timer=null;
+
+/* ---------- i18n ---------- */
+const pl=(n,one,many)=>n===1?one:many;
+const I18N={
+ pt:{
+  you:'Você', newGame:'Novo jogo', howTo:'Como jogar', lang:'Idioma',
+  rules:[
+   'Baralho de 40 cartas (sem 8, 9 e 10). Ordem da menor para a maior: <b>4 5 6 7 Q J K A 2 3</b>.',
+   'Depois de dar as cartas, uma carta é virada: a <b>vira</b>. A carta seguinte a ela é a <b>manilha</b>, que vence todas as outras. Entre manilhas: ♣ &gt; ♥ &gt; ♠ &gt; ♦.',
+   'Cada um aposta quantas vazas vai fazer. Quem deu as cartas aposta por último e não pode fechar a soma igual ao número de cartas.',
+   'Não precisa seguir o naipe. A maior carta leva a vaza. Duas cartas comuns iguais se anulam (<b>embuchou</b>).',
+   'Você perde uma vida por vaza de diferença, para mais ou para menos. Ganha quem sobrar.',
+   'Na rodada de 1 carta, a carta vai na testa: você vê a de todo mundo, menos a sua.'],
+  cards:k=>`${k} ${pl(k,'carta','cartas')}`,
+  dealt:(w,y,k)=>`${w} deu ${k} ${pl(k,'carta','cartas')}.`,
+  bet:(w,y,b)=>`${w} apostou ${b}.`,
+  played:(w,y)=>`${w} jogou.`,
+  leads:(w,y)=>`${w} começa.`,
+  trickWin:(w,y)=>`${w} levou a vaza.`,
+  embuchou:'Embuchou! As cartas se anularam. Ninguém leva.',
+  yourBet:'Sua aposta.', yourTurn:'Sua vez. Jogue uma carta.',
+  draw:ns=>`Empate entre ${ns.join(' e ')}.`, winsYou:'Você venceu!', wins:n=>`${n} venceu.`,
+  youOut:n=>`Você está fora. ${n} bots continuam no jogo.`,
+  out:'fora', dealer:'Quem dá as cartas', dealerChip:'D',
+  betLine:(b,w)=>`aposta <b>${b}</b> · fez <b>${w}</b>`,
+  livesAria:n=>`${n} ${pl(n,'vida','vidas')}`, hidden:'Sua carta escondida', cardOf:(r,s)=>`${r} de ${s}`,
+  viraMan:'Vira · Manilha', round:(r,k)=>`Rodada ${r} · ${k} ${pl(k,'carta','cartas')}`, betsOf:(t,k)=>`Apostas ${t} de ${k}`,
+  trickArea:'Mesa', howMany:'Quantas vazas você vai fazer?',
+  dealerRule:(f,k)=>`Você deu as cartas, então não pode apostar ${f}: a soma não pode dar ${k}.`,
+  forehead:'Sua carta está na testa. Veja as cartas dos outros.', youreOut:'Você está fora.',
+  results:r=>`Resultado da rodada ${r}`, roundRes:'Resultado da rodada',
+  hPlayer:'Jogador', hBet:'Aposta', hWon:'Fez', hLost:'Perdeu', hLives:'Vidas',
+  lostNote:'Vidas perdidas = diferença entre a aposta e o que fez.',
+  playAgain:'Jogar de novo', next:'Próxima rodada',
+  noTricks:'Nenhuma vaza jogada ainda nesta rodada.',
+  takes:(w,y)=>`${w} levou`, emb:'Embuchou, ninguém leva', tied:' (cartas iguais se anularam)',
+  showTricks:r=>`Ver vazas da rodada ${r}`, playing:'jogando', lives:'Vidas',
+  check:(t,k)=>`As apostas somam ${t} com ${k} ${pl(k,'vaza','vazas')} em jogo, então pelo menos um jogador vai errar.`,
+  sheet:'Placar', start:l=>`Início: ${l} vidas`, rd:'Rod.',
+  legend:'Cada célula: aposta/fez, depois vidas perdidas → vidas restantes. Vidas perdidas = diferença entre a aposta e o que fez. Toque no número da rodada para ver as vazas.',
+  roundTricks:r=>`Vazas da rodada ${r}`, of:(a,b)=>`${a} de ${b}`,
+  viraLine:(v,m,d)=>`Vira ${v} · manilha <b>${m}</b> (contorno dourado) · deu as cartas: ${d}`,
+  bots:'Bots', cancel:'Cancelar', deal:'Dar as cartas'
+ },
+ es:{
+  you:'Tú', newGame:'Nueva partida', howTo:'Cómo jugar', lang:'Idioma',
+  rules:[
+   'Baraja de 40 cartas (sin 8, 9 ni 10). Orden de menor a mayor: <b>4 5 6 7 Q J K A 2 3</b>.',
+   'Después de repartir se da vuelta una carta: la <b>vira</b>. La carta siguiente es la <b>manilha</b>, que le gana a todas. Entre manilhas: ♣ &gt; ♥ &gt; ♠ &gt; ♦.',
+   'Cada uno apuesta cuántas bazas va a ganar. Quien reparte apuesta último y no puede hacer que la suma sea igual al número de cartas.',
+   'No hace falta seguir el palo. La carta más alta gana la baza. Dos cartas comunes iguales se anulan (<b>embuchou</b>).',
+   'Pierdes una vida por cada baza de diferencia, de más o de menos. Gana el último que quede en pie.',
+   'En las rondas de 1 carta, la carta va en la frente: ves la de todos menos la tuya.'],
+  cards:k=>`${k} ${pl(k,'carta','cartas')}`,
+  dealt:(w,y,k)=>y?`Repartiste ${k} ${pl(k,'carta','cartas')}.`:`${w} repartió ${k} ${pl(k,'carta','cartas')}.`,
+  bet:(w,y,b)=>y?`Apostaste ${b}.`:`${w} apostó ${b}.`,
+  played:(w,y)=>y?'Jugaste.':`${w} jugó.`,
+  leads:(w,y)=>y?'Empiezas tú.':`Empieza ${w}.`,
+  trickWin:(w,y)=>y?'Te llevas la baza.':`${w} se lleva la baza.`,
+  embuchou:'¡Embuchou! Las cartas se anularon. Nadie se la lleva.',
+  yourBet:'Tu apuesta.', yourTurn:'Tu turno. Juega una carta.',
+  draw:ns=>`Empate entre ${ns.join(' y ')}.`, winsYou:'¡Ganaste!', wins:n=>`${n} ganó.`,
+  youOut:n=>`Estás fuera. Quedan ${n} bots en juego.`,
+  out:'fuera', dealer:'Reparte', dealerChip:'R',
+  betLine:(b,w)=>`apuesta <b>${b}</b> · ganó <b>${w}</b>`,
+  livesAria:n=>`${n} ${pl(n,'vida','vidas')}`, hidden:'Tu carta oculta', cardOf:(r,s)=>`${r} de ${s}`,
+  viraMan:'Vira · Manilha', round:(r,k)=>`Ronda ${r} · ${k} ${pl(k,'carta','cartas')}`, betsOf:(t,k)=>`Apuestas ${t} de ${k}`,
+  trickArea:'Mesa', howMany:'¿Cuántas bazas vas a ganar?',
+  dealerRule:(f,k)=>`Repartiste tú, así que no puedes apostar ${f}: la suma no puede ser ${k}.`,
+  forehead:'Tu carta está en tu frente. Mira las cartas de los demás.', youreOut:'Estás fuera.',
+  results:r=>`Resultado de la ronda ${r}`, roundRes:'Resultado de la ronda',
+  hPlayer:'Jugador', hBet:'Apuesta', hWon:'Ganó', hLost:'Perdió', hLives:'Vidas',
+  lostNote:'Vidas perdidas = diferencia entre lo apostado y lo ganado.',
+  playAgain:'Jugar otra vez', next:'Siguiente ronda',
+  noTricks:'Todavía no se jugó ninguna baza en esta ronda.',
+  takes:(w,y)=>y?'Te la llevas':`${w} se la lleva`, emb:'Embuchou, nadie se la lleva', tied:' (las cartas iguales se anularon)',
+  showTricks:r=>`Ver bazas de la ronda ${r}`, playing:'jugando', lives:'Vidas',
+  check:(t,k)=>`Las apuestas suman ${t} con ${k} ${pl(k,'baza','bazas')} en juego, así que al menos un jugador va a fallar.`,
+  sheet:'Marcador', start:l=>`Inicio: ${l} vidas`, rd:'Ron.',
+  legend:'Cada casilla: apuesta/ganadas, luego vidas perdidas → vidas restantes. Vidas perdidas = diferencia entre lo apostado y lo ganado. Toca el número de ronda para ver sus bazas.',
+  roundTricks:r=>`Bazas de la ronda ${r}`, of:(a,b)=>`${a} de ${b}`,
+  viraLine:(v,m,d)=>`Vira ${v} · manilha <b>${m}</b> (borde dorado) · reparte: ${d}`,
+  bots:'Bots', cancel:'Cancelar', deal:'Repartir'
+ },
+ en:{
+  you:'You', newGame:'New game', howTo:'How to play', lang:'Language',
+  rules:[
+   '40-card deck (no 8, 9, 10). Order from low to high: <b>4 5 6 7 Q J K A 2 3</b>.',
+   'After dealing, one card is turned up: the <b>vira</b>. The next rank above it is the <b>manilha</b>, which beats everything. Between manilhas: ♣ &gt; ♥ &gt; ♠ &gt; ♦.',
+   'Everyone bets how many tricks they\'ll win. The dealer bets last and can\'t make the total equal the number of cards dealt.',
+   'No need to follow suit. Highest card wins the trick. Two equal regular cards cancel each other (<b>embuchou</b>).',
+   'You lose one life per trick you\'re off, over or under. Last one standing wins.',
+   'In 1-card rounds the card goes on your forehead: you see everyone\'s card but your own.'],
+  cards:k=>`${k} ${pl(k,'card','cards')}`,
+  dealt:(w,y,k)=>`${w} dealt ${k} ${pl(k,'card','cards')}.`,
+  bet:(w,y,b)=>`${w} ${y?'bet':'bets'} ${b}.`,
+  played:(w,y)=>`${w} played.`,
+  leads:(w,y)=>`${w} ${y?'lead':'leads'}.`,
+  trickWin:(w,y)=>`${w} ${y?'win':'wins'} the trick.`,
+  embuchou:'Embuchou! Every card cancelled. Nobody takes it.',
+  yourBet:'Your bet.', yourTurn:'Your turn. Play a card.',
+  draw:ns=>`Draw between ${ns.join(' and ')}.`, winsYou:'You win!', wins:n=>`${n} wins.`,
+  youOut:n=>`You're out. ${n} bots still standing.`,
+  out:'out', dealer:'Dealer', dealerChip:'D',
+  betLine:(b,w)=>`bet <b>${b}</b> · won <b>${w}</b>`,
+  livesAria:n=>`${n} ${pl(n,'life','lives')}`, hidden:'Your hidden card', cardOf:(r,s)=>`${r} of ${s}`,
+  viraMan:'Vira · Manilha', round:(r,k)=>`Round ${r} · ${k} ${pl(k,'card','cards')}`, betsOf:(t,k)=>`Bets ${t} of ${k}`,
+  trickArea:'Trick area', howMany:'How many tricks will you win?',
+  dealerRule:(f,k)=>`You're the dealer, so you can't bet ${f}: the total can't be ${k}.`,
+  forehead:'Your card is on your forehead. Read the others\' cards.', youreOut:'You\'re out.',
+  results:r=>`Round ${r} results`, roundRes:'Round results',
+  hPlayer:'Player', hBet:'Bet', hWon:'Won', hLost:'Lost', hLives:'Lives',
+  lostNote:'Lives lost = the difference between bet and won.',
+  playAgain:'Play again', next:'Next round',
+  noTricks:'No tricks played yet this round.',
+  takes:(w,y)=>`${w} ${y?'take':'takes'} it`, emb:'Embuchou, nobody takes it', tied:' (tied cards cancelled)',
+  showTricks:r=>`Show tricks of round ${r}`, playing:'playing', lives:'Lives',
+  check:(t,k)=>`Bets add up to ${t} with ${k} ${pl(k,'trick','tricks')} on the table, so at least one player will miss.`,
+  sheet:'Scoresheet', start:l=>`Start: ${l} lives`, rd:'Rd',
+  legend:'Each cell: bet/won, then lives lost → lives left. Lives lost = the difference between bet and won. Tap a round number to see its tricks.',
+  roundTricks:r=>`Round ${r} tricks`, of:(a,b)=>`${a} of ${b}`,
+  viraLine:(v,m,d)=>`Vira ${v} · manilha <b>${m}</b> (gold outline) · dealer ${d}`,
+  bots:'Bots', cancel:'Cancel', deal:'Deal'
+ }
+};
+let lang='pt';
+try{const s=localStorage.getItem('fdp-lang');if(I18N[s])lang=s}catch(e){}
+const L=()=>I18N[lang];
+const pname=i=>i===0?L().you:G.players[i].name;
+// messages are stored as [key, playerIndex|null, ...args] so they re-render in any language
+const msgText=m=>{
+  if(!m)return '';
+  const [k,p,...a]=m;const v=L()[k];
+  if(typeof v!=='function')return v;
+  if(p===null||p===undefined)return v(...a);
+  return v(pname(p),p===0,...a);
+};
+function applyStatic(){
+  document.documentElement.lang=lang==='pt'?'pt-BR':lang;
+  document.getElementById('btn-new').textContent=L().newGame;
+  document.getElementById('howto-title').textContent=L().howTo;
+  document.getElementById('howto').innerHTML=L().rules.map(r=>`<li>${r}</li>`).join('');
+  document.getElementById('side').setAttribute('aria-label',L().sheet);
+  document.getElementById('langs').setAttribute('aria-label',L().lang);
+  document.querySelectorAll('[data-lang]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.lang===lang));
+}
+
+/* ---------- game ---------- */
+const fullDeck=()=>{const d=[];for(let s=0;s<4;s++)for(let r=0;r<10;r++)d.push({r,s});return d};
+const same=(a,b)=>a.r===b.r&&a.s===b.s;
+const power=c=>c.r===G.man?100+c.s:c.r;
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const aliveIdx=()=>G.players.map((p,i)=>i).filter(i=>G.players[i].alive);
+const nextAlive=i=>{const n=G.players.length;for(let s=1;s<=n;s++){const j=(i+s)%n;if(G.players[j].alive)return j}return i};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function newGame(){
+  clearTimeout(timer);
+  const players=[{name:null,human:true}];
+  for(let i=0;i<cfg.bots;i++)players.push({name:BOT_NAMES[i],human:false});
+  players.forEach(p=>Object.assign(p,{lives:cfg.lives,hand:[],bet:null,won:0,alive:true}));
+  G={players,dealer:Math.random()*players.length|0,k:0,dir:1,round:0,trick:[],phase:'idle',msg:null,history:[],tricks:[],view:null};
+  G.dealer=(G.dealer+players.length-1)%players.length;
+  startRound();
+}
+
+function startRound(){
+  const al=aliveIdx(), n=al.length, max=Math.min(Math.floor(39/n),7);
+  if(G.k===0){G.k=1;G.dir=1}
+  else{let nk=G.k+G.dir;if(nk>max){G.dir=-1;nk=G.k-1}if(nk<1){G.dir=1;nk=2}G.k=Math.max(1,Math.min(nk,max))}
+  G.round++;
+  G.dealer=nextAlive(G.dealer);
+  const deck=shuffle(fullDeck());
+  G.players.forEach(p=>{p.hand=[];p.bet=null;p.won=0});
+  al.forEach(i=>{G.players[i].hand=deck.splice(0,G.k)});
+  G.vira=deck.pop(); G.man=(G.vira.r+1)%10;
+  if(G.k>1){const h=G.players[0];h.hand.sort((a,b)=>power(a)-power(b))}
+  G.order=[];let i=G.dealer;do{i=nextAlive(i);G.order.push(i)}while(i!==G.dealer);
+  G.turnIdx=0;G.phase='bet';G.trick=[];G.trickWin=undefined;G.tricks=[];G.view=null;
+  G.inRound=al;
+  G.msg=['dealt',G.dealer,G.k];
+  render();step();
+}
+
+function forbiddenBet(p){
+  if(p!==G.dealer)return null;
+  const sum=G.order.filter(i=>i!==p).reduce((a,i)=>a+G.players[i].bet,0);
+  const f=G.k-sum;return f>=0&&f<=G.k?f:null;
+}
+
+function step(){
+  clearTimeout(timer);
+  if(G.phase==='bet'){
+    const p=G.order[G.turnIdx];
+    if(!G.players[p].human)timer=setTimeout(()=>doBet(p,botBet(p)),DELAY);
+  }else if(G.phase==='play'){
+    const p=G.turn;
+    if(!G.players[p].human)timer=setTimeout(()=>doPlay(p,botPlay(p)),DELAY);
+  }
+}
+
+function doBet(p,b){
+  G.players[p].bet=b;
+  G.msg=['bet',p,b];
+  G.turnIdx++;
+  if(G.turnIdx>=G.order.length){G.phase='play';G.leader=G.order[0];G.turn=G.leader;G.trick=[]}
+  render();step();
+}
+
+function trickWinner(trick){
+  const counts={};
+  trick.forEach(t=>{if(t.card.r!==G.man)counts[t.card.r]=(counts[t.card.r]||0)+1});
+  let best=null;
+  trick.forEach(t=>{
+    if(t.card.r!==G.man&&counts[t.card.r]>1)return;
+    if(!best||power(t.card)>power(best.card))best=t;
+  });
+  return best;
+}
+
+function doPlay(p,idx){
+  const card=G.players[p].hand.splice(idx,1)[0];
+  G.trick.push({p,card});
+  if(G.trick.length>=aliveIdx().length){
+    const w=trickWinner(G.trick);G.trickWin=w;G.phase='resolve';
+    G.tricks.push({plays:G.trick.slice(),winner:w?w.p:null});
+    G.msg=w?['trickWin',w.p]:['embuchou',null];
+    render();timer=setTimeout(resolveTrick,1300);
+  }else{
+    G.turn=nextAlive(p);G.msg=['played',p];render();step();
+  }
+}
+
+function resolveTrick(){
+  const w=G.trickWin;
+  if(w){G.players[w.p].won++;G.leader=w.p}
+  G.trick=[];G.trickWin=undefined;
+  if(aliveIdx().every(i=>G.players[i].hand.length===0)){endRound();return}
+  G.phase='play';G.turn=G.leader;G.msg=['leads',G.leader];render();step();
+}
+
+function endRound(){
+  const rows=aliveIdx().map(i=>{const p=G.players[i];const lost=Math.abs(p.bet-p.won);const before=p.lives;p.lives-=lost;return{i,bet:p.bet,won:p.won,lost,lives:Math.max(0,p.lives),before}});
+  rows.forEach(r=>{if(G.players[r.i].lives<=0)G.players[r.i].alive=false});
+  G.history.push({round:G.round,k:G.k,vira:G.vira,man:G.man,dealer:G.dealer,rows,tricks:G.tricks});
+  G.view=G.history.length-1;
+  const al=aliveIdx();let over=null;
+  if(al.length===0){
+    const top=Math.max(...rows.map(r=>G.players[r.i].lives));
+    const ws=rows.filter(r=>G.players[r.i].lives===top).map(r=>r.i);
+    over=ws.length>1?{draw:ws}:(ws[0]===0?['winsYou',null]:{wins:ws[0]});
+  }
+  else if(al.length===1)over=al[0]===0?['winsYou',null]:{wins:al[0]};
+  else if(!G.players[0].alive)over=['youOut',null,al.length];
+  G.phase='summary';G.summary={rows,over};render();
+}
+const overText=o=>{
+  if(!o)return '';
+  if(o.draw)return L().draw(o.draw.map(pname));
+  if(o.wins!==undefined)return L().wins(pname(o.wins));
+  return msgText(o);
+};
+
+/* ---------- bots ---------- */
+function botBet(p){
+  const me=G.players[p],k=G.k,n=aliveIdx().length;let est,b;
+  if(k===1){
+    const others=aliveIdx().filter(i=>i!==p).map(i=>G.players[i].hand[0]);
+    const known=[...others,G.vira];
+    const unseen=fullDeck().filter(c=>!known.some(x=>same(x,c)));
+    const best=Math.max(...others.map(power));
+    est=unseen.filter(c=>power(c)>best).length/unseen.length;
+    b=est>0.5?1:0;
+  }else{
+    const known=[...me.hand,G.vira];
+    const unseen=fullDeck().filter(c=>!known.some(x=>same(x,c)));
+    est=me.hand.reduce((a,c)=>a+Math.pow(unseen.filter(u=>power(u)<power(c)).length/unseen.length,n-1),0);
+    b=Math.max(0,Math.min(k,Math.round(est+(Math.random()-.5)*.5)));
+  }
+  const f=forbiddenBet(p);
+  if(f!==null&&b===f){const c=[b-1,b+1].filter(x=>x>=0&&x<=k);b=c.sort((x,y)=>Math.abs(x-est)-Math.abs(y-est))[0]}
+  return b;
+}
+function botPlay(p){
+  const h=G.players[p].hand;if(h.length===1)return 0;
+  const idx=h.map((c,i)=>i).sort((a,b)=>power(h[a])-power(h[b]));
+  const need=G.players[p].bet-G.players[p].won;
+  const cur=trickWinner(G.trick),best=cur?power(cur.card):-1;
+  const beat=idx.filter(i=>power(h[i])>best), safe=idx.filter(i=>power(h[i])<=best);
+  if(need>0){
+    if(!G.trick.length)return idx[idx.length-1];
+    return beat.length?beat[0]:idx[0];
+  }
+  if(!G.trick.length)return idx[0];
+  return safe.length?safe[safe.length-1]:idx[0];
+}
+
+/* ---------- render ---------- */
+function cardHTML(c,o={}){
+  const tag=o.btn?'button':'div';
+  if(o.back)return `<${tag} class="card back ${o.cls||''}" ${o.attrs||''} aria-label="${L().hidden}"><span class="s">?</span></${tag}>`;
+  const cls=['card',RED[c.s]?'red':'',c.r===G.man?'man':'',o.cls||''].join(' ');
+  return `<${tag} class="${cls}" ${o.attrs||''} aria-label="${L().cardOf(RANKS[c.r],SUITS[c.s])}"><span class="r">${RANKS[c.r]}</span><span class="s">${SUITS[c.s]}</span></${tag}>`;
+}
+const livesHTML=p=>{let s='';for(let i=0;i<cfg.lives;i++)s+=i<p.lives?'●':'<span class="gone">●</span>';return `<span class="lives" aria-label="${L().livesAria(Math.max(0,p.lives))}">${s}</span>`};
+const betHTML=p=>`<span class="betline">${L().betLine(p.bet??'–',p.won)}</span>`;
+const dealerChip=()=>`<span class="chip" title="${L().dealer}">${L().dealerChip}</span>`;
+const whoseTurn=()=>G.phase==='bet'?G.order[G.turnIdx]:G.phase==='play'?G.turn:-1;
+
+function render(){
+  const T=L(), t=whoseTurn();
+  // seats
+  document.getElementById('seats').innerHTML=G.players.slice(1).map((p,j)=>{
+    const i=j+1;let cards='';
+    if(p.alive){
+      if(G.k===1&&p.hand.length)cards=cardHTML(p.hand[0],{cls:'sm'});
+      else cards=`<div class="mini"></div><span>×${p.hand.length}</span>`;
+    }else cards=`<span>${T.out}</span>`;
+    return `<div class="seat ${t===i?'turn':''} ${p.alive?'':'out'}"><div class="seat-top"><span class="name">${esc(p.name)}</span>${G.dealer===i?dealerChip():''}</div>${livesHTML(p)}${betHTML(p)}<div class="backs">${cards}</div></div>`;
+  }).join('');
+  // table
+  const totalBet=G.players.reduce((a,p)=>a+(p.bet??0),0);
+  const trick=G.trick.map(x=>{
+    const win=G.trickWin&&G.trickWin===x;const cancelled=G.phase==='resolve'&&!win&&x.card.r!==G.man&&G.trick.filter(y=>y.card.r===x.card.r).length>1;
+    return `<div class="played">${cardHTML(x.card,{cls:win?'win':cancelled?'dead':''})}<span class="who">${esc(pname(x.p))}</span></div>`}).join('');
+  const myTurn=t===0;
+  let status=esc(msgText(G.msg));
+  if(myTurn)status=G.phase==='bet'?T.yourBet:T.yourTurn;
+  document.getElementById('table').innerHTML=`
+    <div class="info">
+      <div class="vira">${cardHTML(G.vira,{cls:'sm'})}<div><div class="lbl">${T.viraMan}</div><div class="manilha">${RANKS[G.man]}</div></div></div>
+      <div class="roundinfo"><div>${T.round(G.round,G.k)}</div><div class="lbl">${T.betsOf(totalBet,G.k)}</div></div>
+    </div>
+    <div class="trick" aria-live="polite">${trick||`<span class="note">${T.trickArea}</span>`}</div>
+    <div class="status ${myTurn?'you':''}" aria-live="polite">${status}</div>`;
+  // me
+  const me=G.players[0];const canPlay=G.phase==='play'&&myTurn;
+  let hand='';
+  if(me.alive){
+    hand=me.hand.map((c,i)=>cardHTML(c,{back:G.k===1,btn:true,attrs:`data-play="${i}" ${canPlay?'':'disabled'}`})).join('');
+  }
+  let betbox='';
+  if(G.phase==='bet'&&myTurn){
+    const f=forbiddenBet(0);let b='';
+    for(let i=0;i<=G.k;i++)b+=`<button class="btn" data-bet="${i}" ${i===f?'disabled':''}>${i}</button>`;
+    betbox=`<div class="betbox"><div class="lbl">${T.howMany}</div><div class="bets">${b}</div>${f!==null?`<div class="note">${T.dealerRule(f,G.k)}</div>`:''}${G.k===1?`<div class="note">${T.forehead}</div>`:''}</div>`;
+  }
+  const meEl=document.getElementById('me');
+  meEl.className='me'+(myTurn?' turn':'');
+  meEl.innerHTML=`<div class="seat-top"><span class="name">${T.you} ${G.dealer===0?dealerChip():''}</span>${livesHTML(me)}${betHTML(me)}</div>
+    <div class="hand ${canPlay?'live':''}">${hand||(me.alive?'':`<span class="note">${T.youreOut}</span>`)}</div>${betbox}`;
+  // overlay
+  const ov=document.getElementById('overlay');
+  if(G.phase==='summary'){
+    const s=G.summary;
+    ov.innerHTML=`<div class="overlay"><div class="panel" role="dialog" aria-label="${T.roundRes}">
+      <h2>${s.over?esc(overText(s.over)):T.results(G.round)}</h2>
+      <table><thead><tr><th>${T.hPlayer}</th><th>${T.hBet}</th><th>${T.hWon}</th><th>${T.hLost}</th><th>${T.hLives}</th></tr></thead><tbody>
+      ${s.rows.map(r=>`<tr><td>${esc(pname(r.i))}</td><td>${r.bet}</td><td>${r.won}</td><td class="${r.lost?'loss':'ok'}">${r.lost?'−'+r.lost:'0'}</td><td>${r.before} → ${r.lives}${r.lives===0?' ✕':''}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="note">${T.lostNote}</div>
+      ${s.over?`<button class="btn primary" data-act="newgame">${T.playAgain}</button>`:`<button class="btn primary" data-act="next">${T.next}</button>`}
+    </div></div>`;
+  }else if(!setupOpen)ov.innerHTML='';
+  renderSide();
+}
+
+const shortName=i=>i===0?L().you:G.players[i].name.split(' ').pop();
+const chip=(c,man,cls='')=>`<span class="cc ${RED[c.s]?'red':''} ${c.r===man?'man':''} ${cls}">${RANKS[c.r]}${SUITS[c.s]}</span>`;
+
+function trickLogHTML(tricks,man){
+  const T=L();
+  if(!tricks.length)return `<div class="empty">${T.noTricks}</div>`;
+  return '<ol class="tlist">'+tricks.map((t,n)=>{
+    const cancelled=t.plays.filter(x=>x.card.r!==man&&t.plays.filter(y=>y.card.r===x.card.r).length>1);
+    const plays=t.plays.map(x=>`<span class="play ${t.winner===x.p?'win':''}"><span class="pn">${esc(shortName(x.p))}</span>${chip(x.card,man,cancelled.includes(x)?'dead':'')}</span>`).join('');
+    const res=t.winner===null?T.emb:esc(T.takes(pname(t.winner),t.winner===0));
+    return `<li><span class="tn">${n+1}</span><div class="plays">${plays}</div><span class="tres">→ ${res}${cancelled.length&&t.winner!==null?T.tied:''}</span></li>`;
+  }).join('')+'</ol>';
+}
+
+function renderSide(){
+  const T=L(), P=G.players.map((p,i)=>i);
+  const cell=r=>{
+    if(!r)return '<td class="c"><span class="sub">—</span></td>';
+    const d=r.lost?`<span class="loss">−${r.lost}</span>`:'<span class="ok">✓</span>';
+    return `<td class="c"><span class="bw">${r.bet}/${r.won}</span><span class="sub">${d} → ${r.lives}</span></td>`;
+  };
+  let body=G.history.map((h,hi)=>{
+    const byP={};h.rows.forEach(r=>byP[r.i]=r);
+    return `<tr class="${G.view===hi?'sel':''}"><td><button class="rdbtn" data-view="${hi}" aria-label="${T.showTricks(h.round)}">${h.round}</button><span class="sub">${T.cards(h.k)}</span></td>${P.map(i=>cell(byP[i])).join('')}</tr>`;
+  }).join('');
+  const live=G.phase!=='summary';
+  if(live){
+    body+=`<tr class="cur ${G.view===null?'sel':''}"><td><button class="rdbtn" data-view="cur" aria-label="${T.showTricks(G.round)}">${G.round}</button><span class="sub">${T.cards(G.k)}</span></td>${P.map(i=>G.inRound.includes(i)?`<td class="c"><span class="bw">${G.players[i].bet??'?'}/${G.players[i].won}</span><span class="sub">${T.playing}</span></td>`:'<td class="c"><span class="sub">—</span></td>').join('')}</tr>`;
+  }
+  const foot=`<tr><td>${T.lives}</td>${P.map(i=>`<td>${Math.max(0,G.players[i].lives)}${G.players[i].alive?'':' ✕'}</td>`).join('')}</tr>`;
+
+  const viewing=G.view===null?{round:G.round,k:G.k,vira:G.vira,man:G.man,dealer:G.dealer,tricks:G.tricks,current:live}:G.history[G.view];
+  const totalBet=G.inRound.reduce((a,i)=>a+(G.players[i].bet??0),0);
+  const check=viewing.current&&G.phase!=='bet'?`<div class="check">${T.check(totalBet,G.k)}</div>`:'';
+
+  document.getElementById('side').innerHTML=`
+    <section class="box">
+      <h3>${T.sheet} <span class="lbl">${T.start(cfg.lives)}</span></h3>
+      <div class="sheet-wrap"><table class="sheet">
+        <thead><tr><th>${T.rd}</th>${P.map(i=>`<th>${esc(shortName(i))}</th>`).join('')}</tr></thead>
+        <tbody>${body}</tbody>
+        <tfoot>${foot}</tfoot>
+      </table></div>
+      <div class="legend">${T.legend}</div>
+    </section>
+    <section class="box">
+      <h3>${T.roundTricks(viewing.round)} <span class="lbl">${T.of(viewing.tricks.length,viewing.k)}</span></h3>
+      <div class="legend">${T.viraLine(chip(viewing.vira,-1),RANKS[viewing.man],esc(pname(viewing.dealer)))}</div>
+      ${check}
+      ${trickLogHTML(viewing.tricks,viewing.man)}
+    </section>`;
+}
+
+let setupOpen=false;
+function showSetup(){
+  const T=L();setupOpen=true;
+  const seg=(key,vals)=>vals.map(v=>`<button class="btn" data-cfg="${key}" data-v="${v}" aria-pressed="${cfg[key]===v}">${v}</button>`).join('');
+  document.getElementById('overlay').innerHTML=`<div class="overlay"><div class="panel" role="dialog" aria-label="${T.newGame}">
+    <h2>${T.newGame}</h2>
+    <div class="opts">
+      <div class="opt"><span>${T.bots}</span><div class="seg">${seg('bots',[1,2,3,4,5])}</div></div>
+      <div class="opt"><span>${T.lives}</span><div class="seg">${seg('lives',[3,5,7])}</div></div>
+    </div>
+    <div class="hdr-btns" style="justify-content:flex-end"><button class="btn" data-act="cancel">${T.cancel}</button><button class="btn primary" data-act="start">${T.deal}</button></div>
+  </div></div>`;
+}
+const closeSetup=()=>{setupOpen=false;document.getElementById('overlay').innerHTML=''};
+
+document.addEventListener('click',e=>{
+  const el=e.target.closest('button');if(!el)return;
+  if(el.dataset.lang){
+    lang=el.dataset.lang;try{localStorage.setItem('fdp-lang',lang)}catch(_){}
+    applyStatic();render();if(setupOpen)showSetup();return;
+  }
+  if(el.id==='btn-new')return showSetup();
+  if(el.dataset.cfg){cfg[el.dataset.cfg]=+el.dataset.v;return showSetup()}
+  const act=el.dataset.act;
+  if(act==='start'||act==='newgame'){closeSetup();return newGame()}
+  if(act==='cancel'){closeSetup();return render()}
+  if(act==='next')return startRound();
+  if(el.dataset.view!==undefined){G.view=el.dataset.view==='cur'?null:+el.dataset.view;return renderSide()}
+  if(el.dataset.bet!==undefined&&G.phase==='bet'&&whoseTurn()===0)return doBet(0,+el.dataset.bet);
+  if(el.dataset.play!==undefined&&G.phase==='play'&&G.turn===0)return doPlay(0,+el.dataset.play);
+});
+
+applyStatic();
+newGame();
+</script>
+
+</body>
+</html>
