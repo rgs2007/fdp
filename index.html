@@ -24,7 +24,11 @@ h1 small{font-family:var(--f-body);font-weight:600;font-size:.8rem;color:var(--m
 .btn:hover{border-color:var(--gold)}
 .btn.primary{background:var(--gold);color:var(--ink);border-color:var(--gold)}
 .btn:disabled{opacity:.35;cursor:not-allowed}
-button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+button:focus-visible,a.btn:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn.wa{background:#25d366;color:#0b2e17;border-color:#25d366}
+.btn.wa:hover{background:#3be27a;border-color:#3be27a}
+.btn.wa svg{width:16px;height:16px;flex:none}
 .hdr-btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .seg.lang .btn{padding:6px 10px;font-size:.8rem;letter-spacing:.04em}
 .seg .btn[aria-pressed="true"]{background:var(--gold);color:var(--ink)}
@@ -152,6 +156,7 @@ details b{color:var(--text)}
         <button class="btn" data-lang="es" lang="es">ES</button>
         <button class="btn" data-lang="en" lang="en">EN</button>
       </div>
+      <a class="btn wa" id="btn-wa" href="https://wa.me/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.2 2.2 2.2 0 0 0 .1-1.2c0-.1-.2-.2-.5-.3Z"/></svg><span id="wa-label"></span></a>
       <button class="btn" id="btn-new"></button>
     </div>
   </header>
@@ -182,7 +187,7 @@ let G=null, cfg={bots:3,lives:5}, timer=null;
 const pl=(n,one,many)=>n===1?one:many;
 const I18N={
  pt:{
-  you:'Você', newGame:'Novo jogo', howTo:'Como jogar', lang:'Idioma',
+  you:'Você', share:'Compartilhar', shareText:'Bora jogar FDP (Fodinha) online? ', newGame:'Novo jogo', howTo:'Como jogar', lang:'Idioma',
   rules:[
    'Baralho de 40 cartas (sem 8, 9 e 10). Ordem da menor para a maior: <b>4 5 6 7 Q J K A 2 3</b>.',
    'Depois de dar as cartas, uma carta é virada: a <b>vira</b>. A carta seguinte a ela é a <b>manilha</b>, que vence todas as outras. Entre manilhas: ♣ &gt; ♥ &gt; ♠ &gt; ♦.',
@@ -222,7 +227,7 @@ const I18N={
   bots:'Bots', cancel:'Cancelar', deal:'Dar as cartas'
  },
  es:{
-  you:'Tú', newGame:'Nueva partida', howTo:'Cómo jugar', lang:'Idioma',
+  you:'Tú', share:'Compartir', shareText:'¿Jugamos FDP (Fodinha) online? ', newGame:'Nueva partida', howTo:'Cómo jugar', lang:'Idioma',
   rules:[
    'Baraja de 40 cartas (sin 8, 9 ni 10). Orden de menor a mayor: <b>4 5 6 7 Q J K A 2 3</b>.',
    'Después de repartir se da vuelta una carta: la <b>vira</b>. La carta siguiente es la <b>manilha</b>, que le gana a todas. Entre manilhas: ♣ &gt; ♥ &gt; ♠ &gt; ♦.',
@@ -262,7 +267,7 @@ const I18N={
   bots:'Bots', cancel:'Cancelar', deal:'Repartir'
  },
  en:{
-  you:'You', newGame:'New game', howTo:'How to play', lang:'Language',
+  you:'You', share:'Share', shareText:'Play FDP (Fodinha), the Brazilian card game, online: ', newGame:'New game', howTo:'How to play', lang:'Language',
   rules:[
    '40-card deck (no 8, 9, 10). Order from low to high: <b>4 5 6 7 Q J K A 2 3</b>.',
    'After dealing, one card is turned up: the <b>vira</b>. The next rank above it is the <b>manilha</b>, which beats everything. Between manilhas: ♣ &gt; ♥ &gt; ♠ &gt; ♦.',
@@ -317,6 +322,10 @@ const msgText=m=>{
 function applyStatic(){
   document.documentElement.lang=lang==='pt'?'pt-BR':lang;
   document.getElementById('btn-new').textContent=L().newGame;
+  document.getElementById('wa-label').textContent=L().share;
+  const wa=document.getElementById('btn-wa');
+  wa.href='https://wa.me/?text='+encodeURIComponent(L().shareText+location.href.split('#')[0]);
+  wa.setAttribute('aria-label',L().share+' (WhatsApp)');
   document.getElementById('howto-title').textContent=L().howTo;
   document.getElementById('howto').innerHTML=L().rules.map(r=>`<li>${r}</li>`).join('');
   document.getElementById('side').setAttribute('aria-label',L().sheet);
