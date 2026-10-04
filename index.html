@@ -17,7 +17,9 @@
 html,body{height:100%}
 body{background:radial-gradient(120% 90% at 50% 40%,var(--felt) 0%,var(--felt-deep) 100%) fixed,var(--felt-deep);color:var(--text);font-family:var(--f-body);font-size:15px;margin:0}
 .wrap{max-width:1140px;margin:0 auto;padding-inline:16px;padding-block:14px 28px;display:flex;flex-direction:column;gap:14px}
-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px 12px}
+header .hdr-btns{grid-column:1/-1;grid-row:2}
+@media (min-width:600px){header{grid-template-columns:1fr auto auto}header .hdr-btns{grid-column:2;grid-row:1}}
 h1{font-family:var(--f-display);font-weight:800;font-size:2rem;margin:0;letter-spacing:.02em;line-height:1}
 h1 small{font-family:var(--f-body);font-weight:600;font-size:.8rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-left:8px}
 .btn{font:inherit;font-weight:700;border:1px solid var(--line);background:rgba(0,0,0,.25);color:var(--text);border-radius:999px;padding:8px 14px;cursor:pointer}
@@ -30,7 +32,16 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 .btn.wa:hover{background:#3be27a;border-color:#3be27a}
 .btn.wa svg{width:16px;height:16px;flex:none}
 .hdr-btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.seg.lang .btn{padding:6px 10px;font-size:.8rem;letter-spacing:.04em}
+.langdd{position:relative}
+.langbtn{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;font-size:.8rem;letter-spacing:.04em}
+.caret{font-size:.7rem;color:var(--muted)}
+.flag{display:inline-block;width:22px;height:15px;border-radius:2px;overflow:hidden;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+.flag svg{display:block;width:100%;height:100%}
+.langmenu{position:absolute;right:0;top:calc(100% + 6px);background:var(--felt-deep);border:1px solid var(--line);border-radius:12px;padding:4px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,.45);z-index:20;display:flex;flex-direction:column}
+.langopt{font:inherit;font-weight:600;display:flex;align-items:center;gap:10px;background:none;border:0;color:var(--text);padding:9px 10px;border-radius:8px;cursor:pointer;text-align:left}
+.langopt:hover,.langopt:focus-visible{background:rgba(227,177,75,.14);outline:none}
+.langopt[aria-checked="true"]{color:var(--gold)}
+.langopt[aria-checked="true"]::after{content:"✓";margin-left:auto}
 .seg .btn[aria-pressed="true"]{background:var(--gold);color:var(--ink)}
 
 .seats{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px}
@@ -151,13 +162,16 @@ details b{color:var(--text)}
   <header>
     <h1>FDP<small>Fodinha</small></h1>
     <div class="hdr-btns">
-      <div class="seg lang" role="group" id="langs" aria-label="Idioma">
-        <button class="btn" data-lang="pt" lang="pt">PT</button>
-        <button class="btn" data-lang="es" lang="es">ES</button>
-        <button class="btn" data-lang="en" lang="en">EN</button>
-      </div>
       <a class="btn wa" id="btn-wa" href="https://wa.me/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.2 2.2 2.2 0 0 0 .1-1.2c0-.1-.2-.2-.5-.3Z"/></svg><span id="wa-label"></span></a>
       <button class="btn" id="btn-new"></button>
+    </div>
+    <div class="langdd" id="langs">
+      <button class="btn langbtn" id="lang-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="lang-menu"><span class="flag" id="lang-flag"></span><span id="lang-code"></span><span class="caret" aria-hidden="true">▾</span></button>
+      <div class="langmenu" id="lang-menu" role="menu" hidden>
+        <button class="langopt" role="menuitemradio" data-lang="pt" lang="pt-BR"><span class="flag" data-flag="pt"></span>Português</button>
+        <button class="langopt" role="menuitemradio" data-lang="es" lang="es"><span class="flag" data-flag="es"></span>Español</button>
+        <button class="langopt" role="menuitemradio" data-lang="en" lang="en"><span class="flag" data-flag="en"></span>English</button>
+      </div>
     </div>
   </header>
   <div class="layout">
@@ -307,6 +321,11 @@ const I18N={
   bots:'Bots', cancel:'Cancel', deal:'Deal'
  }
 };
+const FLAGS={
+ pt:'<svg viewBox="0 0 22 15"><rect width="22" height="15" fill="#009c3b"/><path d="M11 1.8 20 7.5 11 13.2 2 7.5Z" fill="#ffdf00"/><circle cx="11" cy="7.5" r="3.3" fill="#002776"/><path d="M7.8 7a6 6 0 0 1 6.4 1.2" stroke="#fff" stroke-width=".6" fill="none"/></svg>',
+ es:'<svg viewBox="0 0 22 15"><rect width="22" height="15" fill="#aa151b"/><rect y="3.75" width="22" height="7.5" fill="#f1bf00"/></svg>',
+ en:'<svg viewBox="0 0 22 15"><rect width="22" height="15" fill="#fff"/><g fill="#b22234"><rect width="22" height="1.15"/><rect y="2.3" width="22" height="1.15"/><rect y="4.6" width="22" height="1.15"/><rect y="6.9" width="22" height="1.15"/><rect y="9.2" width="22" height="1.15"/><rect y="11.5" width="22" height="1.15"/><rect y="13.8" width="22" height="1.2"/></g><rect width="9.5" height="8.05" fill="#3c3b6e"/></svg>'
+};
 let lang='pt';
 try{const s=localStorage.getItem('fdp-lang');if(I18N[s])lang=s}catch(e){}
 const L=()=>I18N[lang];
@@ -329,8 +348,12 @@ function applyStatic(){
   document.getElementById('howto-title').textContent=L().howTo;
   document.getElementById('howto').innerHTML=L().rules.map(r=>`<li>${r}</li>`).join('');
   document.getElementById('side').setAttribute('aria-label',L().sheet);
-  document.getElementById('langs').setAttribute('aria-label',L().lang);
-  document.querySelectorAll('[data-lang]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.lang===lang));
+  const tg=document.getElementById('lang-toggle');
+  tg.setAttribute('aria-label',L().lang+': '+lang.toUpperCase());
+  document.getElementById('lang-flag').innerHTML=FLAGS[lang];
+  document.getElementById('lang-code').textContent=lang.toUpperCase();
+  document.querySelectorAll('[data-flag]').forEach(f=>f.innerHTML=FLAGS[f.dataset.flag]);
+  document.querySelectorAll('[data-lang]').forEach(b=>b.setAttribute('aria-checked',b.dataset.lang===lang));
 }
 
 /* ---------- game ---------- */
@@ -622,8 +645,12 @@ function showSetup(){
 const closeSetup=()=>{setupOpen=false;document.getElementById('overlay').innerHTML=''};
 
 document.addEventListener('click',e=>{
-  const el=e.target.closest('button');if(!el)return;
+  const el=e.target.closest('button');
+  if(!el||!el.closest('#langs'))toggleLang(false);
+  if(!el)return;
+  if(el.id==='lang-toggle')return toggleLang();
   if(el.dataset.lang){
+    toggleLang(false);
     lang=el.dataset.lang;try{localStorage.setItem('fdp-lang',lang)}catch(_){}
     applyStatic();render();if(setupOpen)showSetup();return;
   }
@@ -638,6 +665,19 @@ document.addEventListener('click',e=>{
   if(el.dataset.play!==undefined&&G.phase==='play'&&G.turn===0)return doPlay(0,+el.dataset.play);
 });
 
+function toggleLang(open){
+  const m=document.getElementById('lang-menu'),t=document.getElementById('lang-toggle');
+  if(open===undefined)open=m.hidden;
+  m.hidden=!open;t.setAttribute('aria-expanded',open);
+  if(open)(m.querySelector('[aria-checked="true"]')||m.querySelector('button')).focus();
+}
+document.addEventListener('keydown',e=>{
+  const m=document.getElementById('lang-menu');if(m.hidden)return;
+  const opts=[...m.querySelectorAll('button')],i=opts.indexOf(document.activeElement);
+  if(e.key==='Escape'){toggleLang(false);document.getElementById('lang-toggle').focus()}
+  else if(e.key==='ArrowDown'){e.preventDefault();opts[(i+1)%opts.length].focus()}
+  else if(e.key==='ArrowUp'){e.preventDefault();opts[(i-1+opts.length)%opts.length].focus()}
+});
 applyStatic();
 newGame();
 </script>
